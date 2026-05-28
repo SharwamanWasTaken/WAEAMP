@@ -54,12 +54,14 @@ client.on(Events.GuildMemberAdd, async (member) => {
     }
 });
 
-client.on(Events.GuildMemberRemove, async (member) => {
-    if (!client.inviteData) return;
-    for (const [inviterId, data] of client.inviteData.entries()) {
-        if (data.joins.includes(member.id)) {
-            data.joins = data.joins.filter(id => id !== member.id);
-            data.left.push(member.id);
+client.once('ready', async () => {
+    console.log(`Bot is online as ${client.user.tag}`);
+    for (const guild of client.guilds.cache.values()) {
+        try {
+            const invites = await guild.invites.fetch();
+            inviteCache.set(guild.id, new Map(invites.map(inv => [inv.code, { uses: inv.uses, inviter: inv.inviter?.id }])));
+        } catch (e) {
+            console.log(`Could not fetch invites for ${guild.name}`);
         }
     }
 });
