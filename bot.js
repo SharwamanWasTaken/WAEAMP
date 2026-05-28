@@ -11,14 +11,10 @@ const client = new Client({
 });
 
 const TOKEN = process.env.TOKEN;
+const waitingForRmi = new Set();
 
 client.once('ready', async () => {
     console.log(`Bot is online as ${client.user.tag}`);
-    const guilds = client.guilds.cache;
-    for (const guild of guilds.values()) {
-        const invites = await guild.invites.fetch();
-        client.inviteCache = new Map(invites.map(inv => [inv.code, inv.uses]));
-    }
 });
 
 client.on(Events.ChannelCreate, async (channel) => {
@@ -26,28 +22,15 @@ client.on(Events.ChannelCreate, async (channel) => {
 
     await new Promise(r => setTimeout(r, 3000));
 
-    const members = await channel.guild.members.fetch();
-    const ticketNumber = channel.name.split('-')[1];
-    const member = members.find(m => m.user.discriminator !== '0' 
-        ? `${m.user.username}${m.user.discriminator}` === ticketNumber
-        : m.user.username === ticketNumber) 
-        || channel.guild.members.cache.find(m => channel.permissionOverwrites.cache.has(m.id) && !m.user.bot);
+    const member = channel.guild.members.cache.find(m => channel.permissionOverwrites.cache.has(m.id) && !m.user.bot);
 
     if (!member) {
         await channel.send('❌ Could not find the ticket owner.');
         return;
     }
 
-    const invites = await channel.guild.invites.fetch();
-    const userInvites = invites.filter(inv => inv.inviter && inv.inviter.id === member.id);
-    const totalInvites = userInvites.reduce((acc, inv) => acc + inv.uses, 0);
-
-    if (totalInvites < 1) {
-        await channel.send(`❌ ${member} you do not meet the invite requirement (you have **${totalInvites}** invites). This ticket will be closed.`);
-        await new Promise(r => setTimeout(r, 5000));
-        await channel.delete();
-        return;
-    }
+    await channel.send(`-i ${member}`);
+    await new Promise(r => setTimeout(r, 5000));
 
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('option1').setLabel('Option 1 - 14 Days').setStyle(ButtonStyle.Secondary),
@@ -66,15 +49,37 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const channel = interaction.channel;
 
     if (interaction.customId === 'option1') {
-        await interaction.reply({ content: '📸 Please take a screenshot as proof, then create a new ticket in **14 days** to claim your reward!', ephemeral: false });
-        await new Promise(r => setTimeout(r, 5000));
-        await channel.delete();
+        await interaction.reply({ content: '📸 Please take a screenshot as proof! This ticket will close in **10 seconds**.' });
+        await new Promise(r => setTimeout(r, 10000));
+        await channel.delete().catch(() => {});
     }
 
-    if (interaction.customId === 'option2' || interaction.customId === 'option3') {
-        const extra = interaction.customId === 'option2' ? '3' : '6';
-        const wait = interaction.customId === 'option2' ? '7 days' : 'INSTANTLY';
-        await interaction.reply({ content: `👍 Please do \`-rmi\` to register your extra **${extra} invites**. Once done, wait for a staff member to arrive and give you your reward (${wait})!`, ephemeral: false });
+    if (interaction.customId === 'option2') {
+        await interaction.reply({ content: '👥 Please invite **3 people** and then create a new ticket to claim your reward! This ticket will close in **10 seconds**.' });
+        await new Promise(r => setTimeout(r, 10000));
+        await channel.delete().catch(() => {});
+    }
+
+    if (interaction.customId === 'option3') {
+        await interaction.reply({ content: '👉 Please type `-rmi` to claim your reward!' });
+        waitingForRmi.add(channel.id);
+    }
+});
+
+client.on(Events.MessageCreate, async (message) => {
+    if (message.author.bot) return;
+    if (!waitingForRmi.has(message.channel.id)) return;
+
+    if (message.content.trim().toLowerCase() === '-rmi') {
+        waitingForRmi.delete(message.channel.id);
+        await message.channel.send('✅ Done! Please wait for a staff member to arrive and give you your reward!');
+    } else {
+        await message.channel.send('⚠️ Please type `-rmi` or this ticket will close in **15 seconds**!');
+        await new Promise(r => setTimeout(r, 15000));
+        if (waitingForRmi.has(message.channel.id)) {
+            waitingForRmi.delete(message.channel.id);
+            await message.channel.delete().catch(() => {});
+        }
     }
 });
 
