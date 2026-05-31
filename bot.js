@@ -1,5 +1,4 @@
 const { Client, GatewayIntentBits, Events, EmbedBuilder } = require('discord.js');
-const { MongoClient } = require('mongodb');
 
 const client = new Client({
     intents: [
@@ -12,20 +11,10 @@ const client = new Client({
 });
 
 const TOKEN = process.env.TOKEN;
-const MONGODB_URI = process.env.MONGODB_URI;
 const inviteCache = new Map();
 const waitingForOption = new Map();
 const waitingForRmi = new Map();
 const INVITE_REWARDS_CHANNEL = '1474732359889850411';
-
-let db;
-
-async function connectDB() {
-    const mongoClient = new MongoClient(MONGODB_URI);
-    await mongoClient.connect();
-    db = mongoClient.db('weamp');
-    console.log('Connected to MongoDB!');
-}
 
 const rewards = {
     '1': { name: 'Mcfa', type: 'minecraft' },
@@ -36,13 +25,17 @@ const rewards = {
     '6': { name: 'Nitro Boost Yearly', type: 'website' },
 };
 
+const minecraftAccounts = [
+    { email: 'account1@gmail.com', pass: 'password1' },
+    { email: 'account2@gmail.com', pass: 'password2' },
+];
+
 process.on('unhandledRejection', (error) => {
     console.error('Unhandled rejection:', error);
 });
 
 client.once('ready', async () => {
     console.log(`Bot is online as ${client.user.tag}`);
-    await connectDB();
     for (const guild of client.guilds.cache.values()) {
         try {
             const invites = await guild.invites.fetch();
@@ -58,26 +51,20 @@ client.on(Events.GuildMemberAdd, async (member) => {
         const guild = member.guild;
         const newInvites = await guild.invites.fetch();
         const oldInvites = inviteCache.get(guild.id) || new Map();
-
         const usedInvite = newInvites.find(inv => {
             const old = oldInvites.get(inv.code);
             return old && inv.uses > old.uses;
         });
-
         inviteCache.set(guild.id, new Map(newInvites.map(inv => [inv.code, { uses: inv.uses, inviter: inv.inviter?.id }])));
-
         if (!usedInvite) return;
         const inviterId = usedInvite.inviter?.id;
         if (!inviterId) return;
-
         if (!client.inviteData) client.inviteData = new Map();
         if (!client.inviteData.has(inviterId)) {
             client.inviteData.set(inviterId, { joins: [], left: [], fake: [] });
         }
-
         const data = client.inviteData.get(inviterId);
         const accountAge = (Date.now() - member.user.createdTimestamp) / (1000 * 60 * 60 * 24);
-
         if (accountAge < 7) {
             data.fake.push(member.id);
         } else {
@@ -111,43 +98,23 @@ async function getInviteStats(guild, userId) {
             return { joins: total, left: 0, fake: 0 };
         }
         const data = client.inviteData.get(userId);
-        return {
-            joins: data.joins.length,
-            left: data.left.length,
-            fake: data.fake.length,
-        };
+        return { joins: data.joins.length, left: data.left.length, fake: data.fake.length };
     } catch (e) {
-        console.log('Error fetching invite stats:', e.message);
         return { joins: 0, left: 0, fake: 0 };
-    }
-}
-
-async function getMinecraftAccount() {
-    try {
-        const account = await db.collection('minecraft_accounts').findOneAndDelete({});
-        return account;
-    } catch (e) {
-        console.log('Error getting minecraft account:', e.message);
-        return null;
     }
 }
 
 client.on(Events.ChannelCreate, async (channel) => {
     try {
         if (!channel.name.startsWith('ticket-')) return;
-
         await new Promise(r => setTimeout(r, 3000));
-
         const member = channel.guild.members.cache.find(m => channel.permissionOverwrites.cache.has(m.id) && !m.user.bot);
-
         if (!member) {
             await channel.send('❌ Could not find the ticket owner.');
             return;
         }
-
         const stats = await getInviteStats(channel.guild, member.id);
         const total = stats.joins - stats.left - stats.fake;
-
         const embed = new EmbedBuilder()
             .setTitle('Invite log')
             .setDescription(`🔰 **${member.user.username}** has **${total}** invites`)
@@ -159,10 +126,8 @@ client.on(Events.ChannelCreate, async (channel) => {
             )
             .setThumbnail(member.user.displayAvatarURL())
             .setColor(0x2b2d31);
-
         await channel.send({ embeds: [embed] });
         await new Promise(r => setTimeout(r, 2000));
-
         if (total < 1) {
             await channel.send(
                 `${member} You have **0 invite(s)** right now. Check <#${INVITE_REWARDS_CHANNEL}> for the rewards.\n\n` +
@@ -174,7 +139,6 @@ client.on(Events.ChannelCreate, async (channel) => {
             await channel.delete().catch(() => {});
             return;
         }
-
         await channel.send(
             `${member} You have **${total} invite(s)** right now. Here are your options:\n\n` +
             `1) Mcfa *(1 invite)*\n` +
@@ -188,7 +152,6 @@ client.on(Events.ChannelCreate, async (channel) => {
             `Rejoin: Members who left and rejoined with your link\n\n` +
             `**Reply with the number (1-6) or just type the reward name.**`
         );
-
         waitingForOption.set(channel.id, member.id);
     } catch (e) {
         console.log('Error in ChannelCreate:', e.message);
@@ -198,11 +161,9 @@ client.on(Events.ChannelCreate, async (channel) => {
 client.on(Events.MessageCreate, async (message) => {
     try {
         if (message.author.bot) return;
-
         if (waitingForOption.has(message.channel.id)) {
             const choice = message.content.trim();
             const reward = rewards[choice];
-
             if (!reward) {
                 await message.channel.send(`⚠️ Please reply with a number between **1-6** or this ticket will close in **15 seconds**!`);
                 await new Promise(r => setTimeout(r, 15000));
@@ -212,29 +173,25 @@ client.on(Events.MessageCreate, async (message) => {
                 }
                 return;
             }
-
             waitingForOption.delete(message.channel.id);
             waitingForRmi.set(message.channel.id, reward);
             await message.channel.send(`${message.author} Please type \`-rmi\` to receive your **${reward.name}**!`);
             return;
         }
-
         if (waitingForRmi.has(message.channel.id)) {
             if (message.content.trim().toLowerCase() === '-rmi') {
                 const reward = waitingForRmi.get(message.channel.id);
                 waitingForRmi.delete(message.channel.id);
-
                 if (reward.type === 'minecraft') {
-                    const account = await getMinecraftAccount();
-                    if (!account) {
+                    if (minecraftAccounts.length === 0) {
                         await message.channel.send('❌ No accounts available right now. Please contact staff!');
                         return;
                     }
+                    const account = minecraftAccounts.shift();
                     await message.channel.send(
                         `**${reward.name}**\n` +
                         `||Email = ${account.email}||\n` +
-                        `Pass = ${account.pass}\n` +
-                        `||${account.email}:${account.pass}||\n\n` +
+                        `||Pass = ${account.pass}||\n\n` +
                         `${message.author} Are we **LEGIT?**\n` +
                         `@Staff Please screenshot and post in proofs. Thanks!`
                     );
@@ -246,7 +203,6 @@ client.on(Events.MessageCreate, async (message) => {
                         `@Staff Please screenshot and post in proofs. Thanks!`
                     );
                 }
-
                 await new Promise(r => setTimeout(r, 30000));
                 await message.channel.delete().catch(() => {});
             } else {
