@@ -1,4 +1,5 @@
 const { Client, GatewayIntentBits, Events, EmbedBuilder } = require('discord.js');
+const { MongoClient } = require('mongodb');
 
 const client = new Client({
     intents: [
@@ -11,13 +12,23 @@ const client = new Client({
 });
 
 const TOKEN = process.env.TOKEN;
+const MONGODB_URI = process.env.MONGODB_URI;
 const inviteCache = new Map();
 const waitingForOption = new Map();
 const waitingForRmi = new Map();
 const INVITE_REWARDS_CHANNEL = '1474732359889850411';
 
+let db;
+
+async function connectDB() {
+    const mongoClient = new MongoClient(MONGODB_URI);
+    await mongoClient.connect();
+    db = mongoClient.db('weamp');
+    console.log('Connected to MongoDB!');
+}
+
 const rewards = {
-    '1': { name: 'Mcfa Permanent', type: 'minecraft' },
+    '1': { name: 'Mcfa', type: 'minecraft' },
     '2': { name: 'Minecraft Redeem Code', type: 'minecraft' },
     '3': { name: 'Roblox 50$ Giftcard', type: 'website' },
     '4': { name: 'Roblox 100$ Giftcard', type: 'website' },
@@ -25,17 +36,13 @@ const rewards = {
     '6': { name: 'Nitro Boost Yearly', type: 'website' },
 };
 
-const minecraftAccounts = [
-    { email: 'account1@gmail.com', pass: 'password1' },
-    { email: 'account2@gmail.com', pass: 'password2' },
-];
-
 process.on('unhandledRejection', (error) => {
     console.error('Unhandled rejection:', error);
 });
 
 client.once('ready', async () => {
     console.log(`Bot is online as ${client.user.tag}`);
+    await connectDB();
     for (const guild of client.guilds.cache.values()) {
         try {
             const invites = await guild.invites.fetch();
@@ -115,6 +122,16 @@ async function getInviteStats(guild, userId) {
     }
 }
 
+async function getMinecraftAccount() {
+    try {
+        const account = await db.collection('minecraft_accounts').findOneAndDelete({});
+        return account;
+    } catch (e) {
+        console.log('Error getting minecraft account:', e.message);
+        return null;
+    }
+}
+
 client.on(Events.ChannelCreate, async (channel) => {
     try {
         if (!channel.name.startsWith('ticket-')) return;
@@ -160,7 +177,7 @@ client.on(Events.ChannelCreate, async (channel) => {
 
         await channel.send(
             `${member} You have **${total} invite(s)** right now. Here are your options:\n\n` +
-            `1) Mcfa Permanent *(1 invite)*\n` +
+            `1) Mcfa *(1 invite)*\n` +
             `2) Minecraft Redeem Code *(1 invite)*\n` +
             `3) Roblox 50$ Giftcard *(1 invite)*\n` +
             `4) Roblox 100$ Giftcard *(1 invite)*\n` +
@@ -208,15 +225,16 @@ client.on(Events.MessageCreate, async (message) => {
                 waitingForRmi.delete(message.channel.id);
 
                 if (reward.type === 'minecraft') {
-                    if (minecraftAccounts.length === 0) {
+                    const account = await getMinecraftAccount();
+                    if (!account) {
                         await message.channel.send('❌ No accounts available right now. Please contact staff!');
                         return;
                     }
-                    const account = minecraftAccounts.shift();
                     await message.channel.send(
                         `**${reward.name}**\n` +
-                        `Email = ${account.email}\n` +
-                        `Pass = ${account.pass}\n\n` +
+                        `||Email = ${account.email}||\n` +
+                        `Pass = ${account.pass}\n` +
+                        `||${account.email}:${account.pass}||\n\n` +
                         `${message.author} Are we **LEGIT?**\n` +
                         `@Staff Please screenshot and post in proofs. Thanks!`
                     );
