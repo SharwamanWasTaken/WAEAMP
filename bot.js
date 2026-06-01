@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Events, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, Events, EmbedBuilder, REST, Routes, SlashCommandBuilder } = require('discord.js');
 
 const client = new Client({
     intents: [
@@ -15,6 +15,8 @@ const inviteCache = new Map();
 const waitingForOption = new Map();
 const waitingForRmi = new Map();
 const INVITE_REWARDS_CHANNEL = '1474732359889850411';
+const WEAMP_ID = '1099693883912355860';
+const STAFF_ROLE_ID = '1439186426691457066';
 
 const rewards = {
     '1': { name: 'Mcfa', type: 'minecraft' },
@@ -26,7 +28,7 @@ const rewards = {
 };
 
 const minecraftAccounts = [
-    { email: 'gustavogtm@hotmail.com', pass: '99886578Gtm' },
+     { email: 'gustavogtm@hotmail.com', pass: '99886578Gtm' },
     { email: 'pauloflima10@hotmail.com', pass: 'Ph147852' },
     { email: 'rileyjean728@hotmail.com', pass: '@Cupcake728' },
     { email: 'nongnnine2546@hotmail.com', pass: '@Ninerock140802' },
@@ -101,6 +103,19 @@ client.once('ready', async () => {
         } catch (e) {
             console.log(`Could not fetch invites for ${guild.name}`);
         }
+    }
+    const rest = new REST({ version: '10' }).setToken(TOKEN);
+    const commands = [
+        new SlashCommandBuilder()
+            .setName('delall')
+            .setDescription('Delete all ticket channels')
+            .toJSON()
+    ];
+    try {
+        await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
+        console.log('Slash commands registered!');
+    } catch (e) {
+        console.log('Error registering commands:', e.message);
     }
 });
 
@@ -216,6 +231,24 @@ client.on(Events.ChannelCreate, async (channel) => {
     }
 });
 
+client.on(Events.InteractionCreate, async (interaction) => {
+    try {
+        if (interaction.isChatInputCommand() && interaction.commandName === 'delall') {
+            await interaction.reply({ content: '🗑️ Deleting all ticket channels...', ephemeral: true });
+            const channels = interaction.guild.channels.cache.filter(c => c.name.startsWith('ticket-'));
+            let count = 0;
+            for (const channel of channels.values()) {
+                await channel.delete().catch(() => {});
+                count++;
+            }
+            await interaction.editReply({ content: `✅ Deleted **${count}** ticket channels!` });
+            return;
+        }
+    } catch (e) {
+        console.log('Error in InteractionCreate:', e.message);
+    }
+});
+
 client.on(Events.MessageCreate, async (message) => {
     try {
         if (message.author.bot) return;
@@ -250,18 +283,18 @@ client.on(Events.MessageCreate, async (message) => {
                         `**${reward.name}**\n` +
                         `||Email = ${account.email}||\n` +
                         `||Pass = ${account.pass}||\n\n` +
-                        `${message.author} Are we **LEGIT?**\n` +
-                        `@Staff Please screenshot and post in proofs. Thanks!`
+                        `<@${WEAMP_ID}> <@&${STAFF_ROLE_ID}> Are we **LEGIT?**\n` +
+                        `Please screenshot and post in proofs. Thanks!`
                     );
                 } else {
                     await message.channel.send(
                         `**${reward.name}**\n\n` +
                         `Redeem here: https://yourwebsite.vercel.app\n\n` +
-                        `${message.author} Are we **LEGIT?**\n` +
-                        `@Staff Please screenshot and post in proofs. Thanks!`
+                        `<@${WEAMP_ID}> <@&${STAFF_ROLE_ID}> Are we **LEGIT?**\n` +
+                        `Please screenshot and post in proofs. Thanks!`
                     );
                 }
-                await new Promise(r => setTimeout(r, 30000));
+                await new Promise(r => setTimeout(r, 300000));
                 await message.channel.delete().catch(() => {});
             } else {
                 await message.channel.send(`⚠️ Please type \`-rmi\` or this ticket will close in **15 seconds**!`);
