@@ -28,17 +28,17 @@ const rewards = {
 };
 
 const minecraftAccounts = [
-     { email: 'gustavogtm@hotmail.com', pass: '99886578Gtm' },
-    { email: 'pauloflima10@hotmail.com', pass: 'Ph147852' },
-    { email: 'rileyjean728@hotmail.com', pass: '@Cupcake728' },
-    { email: 'nongnnine2546@hotmail.com', pass: '@Ninerock140802' },
-    { email: 'gabrielyuki04@hotmail.com', pass: '@Takahara0405' },
-    { email: 'little_mushiii@hotmail.com', pass: 'arihb12345' },
-    { email: 'cris26_leo@hotmail.com', pass: 'Camila29' },
-    { email: 'ajfoster3469@outlook.com', pass: 'Conoldro9' },
-    { email: 'lyndonalms@outlook.com', pass: 'Batman1972' },
-    { email: 'brandichambers79@outlook.com', pass: 'Aaron$83' },
-    { email: 'silviadvfernandez@hotmail.com', pass: 'Panchonenamika3' },
+    { email: 'account1@gmail.com', pass: 'password1' },
+    { email: 'account2@gmail.com', pass: 'password2' },
+    { email: 'account3@gmail.com', pass: 'password3' },
+    { email: 'account4@gmail.com', pass: 'password4' },
+    { email: 'account5@gmail.com', pass: 'password5' },
+    { email: 'account6@gmail.com', pass: 'password6' },
+    { email: 'account7@gmail.com', pass: 'password7' },
+    { email: 'account8@gmail.com', pass: 'password8' },
+    { email: 'account9@gmail.com', pass: 'password9' },
+    { email: 'account10@gmail.com', pass: 'password10' },
+    { email: 'account11@gmail.com', pass: 'password11' },
     { email: 'account12@gmail.com', pass: 'password12' },
     { email: 'account13@gmail.com', pass: 'password13' },
     { email: 'account14@gmail.com', pass: 'password14' },
@@ -89,6 +89,7 @@ const minecraftAccounts = [
     { email: 'account59@gmail.com', pass: 'password59' },
     { email: 'account60@gmail.com', pass: 'password60' },
 ];
+];
 
 process.on('unhandledRejection', (error) => {
     console.error('Unhandled rejection:', error);
@@ -112,11 +113,11 @@ client.once('ready', async () => {
             .toJSON(),
         new SlashCommandBuilder()
             .setName('rmi')
-            .setDescription('Reset invite count for a user')
+            .setDescription('Reset invite count for yourself or a user')
             .addUserOption(option =>
                 option.setName('user')
-                    .setDescription('The user to reset invites for')
-                    .setRequired(true))
+                    .setDescription('The user to reset invites for (optional)')
+                    .setRequired(false))
             .toJSON()
     ];
     try {
@@ -256,7 +257,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
 
         if (interaction.commandName === 'rmi') {
-            const target = interaction.options.getUser('user');
+            const target = interaction.options.getUser('user') || interaction.user;
             if (client.inviteData && client.inviteData.has(target.id)) {
                 client.inviteData.delete(target.id);
             }
@@ -285,11 +286,11 @@ client.on(Events.MessageCreate, async (message) => {
             }
             waitingForOption.delete(message.channel.id);
             waitingForRmi.set(message.channel.id, reward);
-            await message.channel.send(`${message.author} Please type \`-rmi\` to receive your **${reward.name}**!`);
+            await message.channel.send(`${message.author} Please type \`/rmi\` to receive your **${reward.name}**!`);
             return;
         }
         if (waitingForRmi.has(message.channel.id)) {
-            if (message.content.trim().toLowerCase() === '-rmi') {
+            if (message.content.trim().toLowerCase() === '/rmi') {
                 const reward = waitingForRmi.get(message.channel.id);
                 waitingForRmi.delete(message.channel.id);
                 if (reward.type === 'minecraft') {
@@ -316,7 +317,7 @@ client.on(Events.MessageCreate, async (message) => {
                 await new Promise(r => setTimeout(r, 300000));
                 await message.channel.delete().catch(() => {});
             } else {
-                await message.channel.send(`⚠️ Please type \`-rmi\` or this ticket will close in **15 seconds**!`);
+                await message.channel.send(`⚠️ Please type \`/rmi\` or this ticket will close in **15 seconds**!`);
                 await new Promise(r => setTimeout(r, 15000));
                 if (waitingForRmi.has(message.channel.id)) {
                     waitingForRmi.delete(message.channel.id);
