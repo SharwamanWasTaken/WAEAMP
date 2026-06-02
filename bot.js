@@ -89,8 +89,6 @@ const minecraftAccounts = [
     { email: 'account59@gmail.com', pass: 'password59' },
     { email: 'account60@gmail.com', pass: 'password60' },
 ];
-];
-
 process.on('unhandledRejection', (error) => {
     console.error('Unhandled rejection:', error);
 });
