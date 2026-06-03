@@ -331,7 +331,7 @@ client.on(Events.MessageCreate, async (message) => {
                 } else {
                     await message.channel.send(
                         `**${reward.name}**\n\n` +
-                        `Redeem here: index-html-six-gold.vercel.app\n\n` +
+                        `Redeem here: https://index-html-six-gold.vercel.app\n\n` +
                         `<@${WEAMP_ID}> <@&${STAFF_ROLE_ID}> Are we **LEGIT?**\n` +
                         `Please screenshot and post in proofs. Thanks!`
                     );
