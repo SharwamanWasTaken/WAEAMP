@@ -28,7 +28,7 @@ const rewards = {
 };
 
 const minecraftAccounts = [
-    { email: 'jasonbrassel@outlook.com', pass: 'jtB3884' },
+   { email: 'jasonbrassel@outlook.com', pass: 'jtB3884' },
     { email: 'tinatheprima@hotmail.com', pass: 'Maggianos1!' },
     { email: 'kookiezrock@hotmail.com', pass: 'PeanutButter23.' },
     { email: 'oumou29@outlook.fr', pass: 'Complete91..' },
@@ -185,6 +185,27 @@ async function getInviteStats(guild, userId) {
     }
 }
 
+async function resetUserInvites(guild, userId) {
+    try {
+        // Clear our bot's tracking data
+        if (client.inviteData && client.inviteData.has(userId)) {
+            client.inviteData.delete(userId);
+        }
+        // Delete all actual Discord invites for this user
+        const guildInvites = await guild.invites.fetch();
+        const userInvites = guildInvites.filter(inv => inv.inviter?.id === userId);
+        for (const invite of userInvites.values()) {
+            await invite.delete().catch(() => {});
+        }
+        // Update invite cache to reflect 0 uses
+        const newInvites = await guild.invites.fetch();
+        inviteCache.set(guild.id, new Map(newInvites.map(inv => [inv.code, { uses: inv.uses, inviter: inv.inviter?.id }])));
+        console.log(`Reset invites for user ${userId}`);
+    } catch (e) {
+        console.log('Error resetting invites:', e.message);
+    }
+}
+
 client.on(Events.ChannelCreate, async (channel) => {
     try {
         if (!channel.name.startsWith('ticket-')) return;
@@ -257,10 +278,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
         if (interaction.commandName === 'rmi') {
             const target = interaction.options.getUser('user') || interaction.user;
-            if (client.inviteData && client.inviteData.has(target.id)) {
-                client.inviteData.delete(target.id);
-            }
-            await interaction.reply({ content: `✅ Invite data reset for **${target.username}**!`, ephemeral: true });
+            await resetUserInvites(interaction.guild, target.id);
+            await interaction.reply({ content: `✅ Invites fully reset for **${target.username}**! They are now at 0.`, ephemeral: true });
             return;
         }
     } catch (e) {
@@ -292,9 +311,10 @@ client.on(Events.MessageCreate, async (message) => {
             if (message.content.trim().toLowerCase() === '!rmi') {
                 const reward = waitingForRmi.get(message.channel.id);
                 waitingForRmi.delete(message.channel.id);
-                if (client.inviteData && client.inviteData.has(message.author.id)) {
-                    client.inviteData.delete(message.author.id);
-                }
+
+                // Reset invites immediately
+                await resetUserInvites(message.guild, message.author.id);
+
                 if (reward.type === 'minecraft') {
                     if (minecraftAccounts.length === 0) {
                         await message.channel.send('❌ No accounts available right now. Please contact staff!');
