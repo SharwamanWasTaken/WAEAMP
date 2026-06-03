@@ -89,6 +89,7 @@ const minecraftAccounts = [
     { email: 'account59@gmail.com', pass: 'password59' },
     { email: 'account60@gmail.com', pass: 'password60' },
 ];
+
 process.on('unhandledRejection', (error) => {
     console.error('Unhandled rejection:', error);
 });
@@ -284,13 +285,16 @@ client.on(Events.MessageCreate, async (message) => {
             }
             waitingForOption.delete(message.channel.id);
             waitingForRmi.set(message.channel.id, reward);
-            await message.channel.send(`${message.author} Please type \`/rmi\` to receive your **${reward.name}**!`);
+            await message.channel.send(`${message.author} Please type \`!rmi\` to receive your **${reward.name}**!`);
             return;
         }
         if (waitingForRmi.has(message.channel.id)) {
-            if (message.content.trim().toLowerCase() === '/rmi') {
+            if (message.content.trim().toLowerCase() === '!rmi') {
                 const reward = waitingForRmi.get(message.channel.id);
                 waitingForRmi.delete(message.channel.id);
+                if (client.inviteData && client.inviteData.has(message.author.id)) {
+                    client.inviteData.delete(message.author.id);
+                }
                 if (reward.type === 'minecraft') {
                     if (minecraftAccounts.length === 0) {
                         await message.channel.send('❌ No accounts available right now. Please contact staff!');
@@ -315,7 +319,7 @@ client.on(Events.MessageCreate, async (message) => {
                 await new Promise(r => setTimeout(r, 300000));
                 await message.channel.delete().catch(() => {});
             } else {
-                await message.channel.send(`⚠️ Please type \`/rmi\` or this ticket will close in **15 seconds**!`);
+                await message.channel.send(`⚠️ Please type \`!rmi\` or this ticket will close in **15 seconds**!`);
                 await new Promise(r => setTimeout(r, 15000));
                 if (waitingForRmi.has(message.channel.id)) {
                     waitingForRmi.delete(message.channel.id);
