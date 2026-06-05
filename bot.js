@@ -28,7 +28,6 @@ const rewards = {
 };
 
 const minecraftAccounts = [
-    const minecraftAccounts = [
     { email: 'fabiane.santosbarbosa@hotmail.com', pass: 'fabiane1' },
     { email: 'cpjaimes@live.com.mx', pass: 'MOYMIAMAYE2014' },
     { email: 'joilce_maninha@hotmail.com', pass: '68j96l00l' },
