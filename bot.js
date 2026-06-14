@@ -1,4 +1,6 @@
-const { Client, GatewayIntentBits, Events, EmbedBuilder, REST, Routes, SlashCommandBuilder } = require('discord.js');
+    const { Client, GatewayIntentBits, Events, EmbedBuilder, REST, Routes, SlashCommandBuilder, AttachmentBuilder } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
 
 const client = new Client({
     intents: [
@@ -18,7 +20,7 @@ const INVITE_REWARDS_CHANNEL = '1474732359889850411';
 const WEAMP_ID = '1099693883912355860';
 const STAFF_ROLE_ID = '1439186426691457066';
 
-const EMAIL_CHANGE_METHOD = `||Instant Mail Change Method
+const EMAIL_CHANGE_CONTENT = `Instant Mail Change Method
 
 Step 1 :- Access Account Info: Go to the Manage how you sign in to Microsoft page and sign in with your current credentials (Get Another Phone And Login The Account With That Account, Look At D.O.B And Other Info That Can Help You Sign-In In Another Phone Do Forgot Pass And Enter Your Password And Go Into Account Recovery Mode And Answer As Much As Possible And Boom, You Got Logged In. Now,).
 Step 2 :- Add a New Email: Select Add email.
@@ -27,9 +29,9 @@ Step 2 :- Add a New Email: Select Add email.
 Step 3 :- Verify the New Email: If you added an existing email address, you must verify it by clicking the link sent to that inbox.
 Step 4 :- Set as Primary: Once verified, find the new email under Account aliases and select Make primary.
 Step 5 :- Remove the Old Email (Optional): If you no longer want the old address associated with the account, select Remove next to it.
-METHOD BY LUNAR CLOUD, .gg/lunarcloud||`;
+METHOD BY LUNAR CLOUD, .gg/lunarcloud`;
 
-const PASS_CHANGE_METHOD = `||🎯 PASS METHOD 2.0
+const PASS_CHANGE_CONTENT = `🎯 PASS METHOD 2.0
 
 🔷 1️⃣
 🌐 Go to: https://account.live.com/acsr
@@ -70,9 +72,9 @@ const PASS_CHANGE_METHOD = `||🎯 PASS METHOD 2.0
 
 ✅ DONE
 📨 Wait for Microsoft to reply with recovery link
-⚡ 100% works if info is correct||`;
+⚡ 100% works if info is correct`;
 
-const MCFA_METHOD = `||Mcfa Method (no gamepass needed)
+const MCFA_METHOD_CONTENT = `Mcfa Method (no gamepass needed)
 
 MINECRAFT FALL ACCESS PERMANENT ACCOUNT Method (ON MAIL/RANDOM)
 
@@ -84,7 +86,7 @@ STEP 4: DO STEP 3A & 3B UNTIL YOU GET ENOUGH POINTS TO REDEEM A AMAZON GIFTCARD 
 STEP 5: MUST USE AN EMAIL IN AMAZON ACCOUNT AFTER PURCHASING MINECRAFT FROM AMAZON, IT WON'T BE DELIVERED TO YOUR HOME IT WILL BE DIRECTLY MAILED TO YOUR MAIL ATTACHED ON YOUR AMAZON ACCOUNT
 STEP 6: REDEEM THE CODE RECEIVED AND YOU HAVE PERMANENT MINECRAFT ACCOUNT NOW!!
 
-Pro tip: Make 10 accounts and accounts will be ready in 15 days||`;
+Pro tip: Make 10 accounts and accounts will be ready in 15 days`;
 
 const rewards = {
     '1': { name: 'Mcfa', type: 'minecraft', invitesNeeded: 1 },
@@ -265,6 +267,11 @@ async function resetUserInvites(guild, userId) {
     }
 }
 
+function makeAttachment(content, filename) {
+    const buffer = Buffer.from(content, 'utf-8');
+    return new AttachmentBuilder(buffer, { name: filename });
+}
+
 client.on(Events.ChannelCreate, async (channel) => {
     try {
         if (!channel.name.startsWith('ticket-')) return;
@@ -386,26 +393,23 @@ client.on(Events.MessageCreate, async (message) => {
                         `Please screenshot and post in proofs. Thanks!`
                     );
                 } else if (reward.type === 'emailchange') {
-                    await message.channel.send(
-                        `**${reward.name}**\n\n` +
-                        EMAIL_CHANGE_METHOD + `\n\n` +
-                        `<@${WEAMP_ID}> <@&${STAFF_ROLE_ID}> Are we **LEGIT?**\n` +
-                        `Please screenshot and post in proofs. Thanks!`
-                    );
+                    const attachment = makeAttachment(EMAIL_CHANGE_CONTENT, 'Email_Change_Method.txt');
+                    await message.channel.send({
+                        content: `**${reward.name}**\n\n<@${WEAMP_ID}> <@&${STAFF_ROLE_ID}> Are we **LEGIT?**\nPlease screenshot and post in proofs. Thanks!`,
+                        files: [attachment]
+                    });
                 } else if (reward.type === 'passchange') {
-                    await message.channel.send(
-                        `**${reward.name}**\n\n` +
-                        PASS_CHANGE_METHOD + `\n\n` +
-                        `<@${WEAMP_ID}> <@&${STAFF_ROLE_ID}> Are we **LEGIT?**\n` +
-                        `Please screenshot and post in proofs. Thanks!`
-                    );
+                    const attachment = makeAttachment(PASS_CHANGE_CONTENT, 'Pass_Change_Method.txt');
+                    await message.channel.send({
+                        content: `**${reward.name}**\n\n<@${WEAMP_ID}> <@&${STAFF_ROLE_ID}> Are we **LEGIT?**\nPlease screenshot and post in proofs. Thanks!`,
+                        files: [attachment]
+                    });
                 } else if (reward.type === 'mcfamethod') {
-                    await message.channel.send(
-                        `**${reward.name}**\n\n` +
-                        MCFA_METHOD + `\n\n` +
-                        `<@${WEAMP_ID}> <@&${STAFF_ROLE_ID}> Are we **LEGIT?**\n` +
-                        `Please screenshot and post in proofs. Thanks!`
-                    );
+                    const attachment = makeAttachment(MCFA_METHOD_CONTENT, 'MCFA_Method.txt');
+                    await message.channel.send({
+                        content: `**${reward.name}**\n\n<@${WEAMP_ID}> <@&${STAFF_ROLE_ID}> Are we **LEGIT?**\nPlease screenshot and post in proofs. Thanks!`,
+                        files: [attachment]
+                    });
                 }
                 await new Promise(r => setTimeout(r, 300000));
                 await message.channel.delete().catch(() => {});
@@ -423,4 +427,4 @@ client.on(Events.MessageCreate, async (message) => {
     }
 });
 
-client.login(TOKEN);
+client.login(TOKEN); 
