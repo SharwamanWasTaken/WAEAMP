@@ -18,13 +18,79 @@ const INVITE_REWARDS_CHANNEL = '1474732359889850411';
 const WEAMP_ID = '1099693883912355860';
 const STAFF_ROLE_ID = '1439186426691457066';
 
+const EMAIL_CHANGE_METHOD = `||Instant Mail Change Method
+
+Step 1 :- Access Account Info: Go to the Manage how you sign in to Microsoft page and sign in with your current credentials (Get Another Phone And Login The Account With That Account, Look At D.O.B And Other Info That Can Help You Sign-In In Another Phone Do Forgot Pass And Enter Your Password And Go Into Account Recovery Mode And Answer As Much As Possible And Boom, You Got Logged In. Now,).
+Step 2 :- Add a New Email: Select Add email.
+- You can create a new Outlook.com email address.
+- You can add an existing email address (non-Microsoft) as a new alias.
+Step 3 :- Verify the New Email: If you added an existing email address, you must verify it by clicking the link sent to that inbox.
+Step 4 :- Set as Primary: Once verified, find the new email under Account aliases and select Make primary.
+Step 5 :- Remove the Old Email (Optional): If you no longer want the old address associated with the account, select Remove next to it.
+METHOD BY LUNAR CLOUD, .gg/lunarcloud||`;
+
+const PASS_CHANGE_METHOD = `||🎯 PASS METHOD 2.0
+
+🔷 1️⃣
+🌐 Go to: https://account.live.com/acsr
+🧾 Fill in the account email
+
+🔷 2️⃣
+🕵️ Open Incognito Window
+🔐 Login to https://microsoft.com/
+👤 Go to Profile → My Account → Address Book
+💳 Or go to Cards → Edit
+
+🔷 3️⃣
+📝 Fill all details in ACSR
+🔑 Use the password of the acc
+✅ Click Next
+
+🔷 4️⃣
+📬 Open https://outlook.com/
+📂 Go to Sent Items
+📌 Copy Sender Email + Subject
+📋 Paste into ACSR
+
+🔷 5️⃣ (Important ⚠️)
+👥 Visit: https://teams.live.com/ (Skype = Teams)
+🧾 Copy all Contacts
+📥 Paste into ACSR under Skype section
+
+🔷 6️⃣
+🎮 Go to: https://xbox.com/profile
+🆔 Copy Gamertag (Username)
+🚫 Skip Live ID
+📎 Paste Gamertag in ACSR
+
+🔷 7️⃣ (If asked)
+💸 Visit: https://account.microsoft.com/billing/payments
+🔍 Copy card info (name / 4 digits)
+📤 Paste into ACSR
+
+✅ DONE
+📨 Wait for Microsoft to reply with recovery link
+⚡ 100% works if info is correct||`;
+
+const MCFA_METHOD = `||Mcfa Method (no gamepass needed)
+
+MINECRAFT FALL ACCESS PERMANENT ACCOUNT Method (ON MAIL/RANDOM)
+
+STEP 1: GO TO REWARDS.MICROSOFT.COM
+STEP 2: MAKE NEW MICROSOFT ACCOUNT
+STEP 3A: DOWNLOAD ANY VPN AND CONNECT TO JAPAN AND COMPLETE TASKS AFTER CONNECT TO USA AS WELL AS CANADA
+STEP 3B: COME BACK TO INDIA AND COMPLETE TASKS AND BUY A AMAZON GIFTCARD, VERIFY WITH YOUR PHONE NUMBER AND BUY REWARDS, RECEIVED ON YOUR EMAIL IN UNDER 24 HOURS (MOST IMPORTANT STEP)
+STEP 4: DO STEP 3A & 3B UNTIL YOU GET ENOUGH POINTS TO REDEEM A AMAZON GIFTCARD OF ANY AMOUNT, DO THIS UNTIL YOU GET 3500 RUPEES
+STEP 5: MUST USE AN EMAIL IN AMAZON ACCOUNT AFTER PURCHASING MINECRAFT FROM AMAZON, IT WON'T BE DELIVERED TO YOUR HOME IT WILL BE DIRECTLY MAILED TO YOUR MAIL ATTACHED ON YOUR AMAZON ACCOUNT
+STEP 6: REDEEM THE CODE RECEIVED AND YOU HAVE PERMANENT MINECRAFT ACCOUNT NOW!!
+
+Pro tip: Make 10 accounts and accounts will be ready in 15 days||`;
+
 const rewards = {
-    '1': { name: 'Mcfa', type: 'minecraft' },
-    '2': { name: 'Minecraft Redeem Code', type: 'minecraft' },
-    '3': { name: 'Roblox 50$ Giftcard', type: 'website' },
-    '4': { name: 'Roblox 100$ Giftcard', type: 'website' },
-    '5': { name: 'Nitro Basic Yearly', type: 'website' },
-    '6': { name: 'Nitro Boost Yearly', type: 'website' },
+    '1': { name: 'Mcfa', type: 'minecraft', invitesNeeded: 1 },
+    '2': { name: 'Email Change Method', type: 'emailchange', invitesNeeded: 2 },
+    '3': { name: 'Pass Change Method', type: 'passchange', invitesNeeded: 4 },
+    '4': { name: 'Minecraft Redeem Code Method', type: 'mcfamethod', invitesNeeded: 6 },
 };
 
 const minecraftAccounts = [
@@ -85,14 +151,6 @@ const minecraftAccounts = [
     { email: 'dani_gfall@hotmail.com', pass: 'Br1ghton' },
     { email: 'blue_girl182@hotmail.com', pass: 'Mayte182' },
     { email: 'winnie_the_pooh7971@hotmail.com', pass: 'Vicky891122@' },
-    { email: 'ce_mirandaz@hotmail.com', pass: 'Superciego1' },
-    { email: 'camie516@hotmail.com', pass: 'Rugrat22' },
-    { email: 'cinthia_leon1993@hotmail.com', pass: 'carolina1993' },
-    { email: 'lauchasanta@hotmail.com', pass: 'Lautii95' },
-    { email: 'saaanty.cs@hotmail.com', pass: 'Asd123456789' },
-    { email: 'bat.hug@hotmail.fr', pass: 'Fuschia78' },
-    { email: 'roberto_mendex39@hotmail.com', pass: '69xunning' },
-
 ];
 
 process.on('unhandledRejection', (error) => {
@@ -192,20 +250,16 @@ async function getInviteStats(guild, userId) {
 
 async function resetUserInvites(guild, userId) {
     try {
-        // Clear our bot's tracking data
         if (client.inviteData && client.inviteData.has(userId)) {
             client.inviteData.delete(userId);
         }
-        // Delete all actual Discord invites for this user
         const guildInvites = await guild.invites.fetch();
         const userInvites = guildInvites.filter(inv => inv.inviter?.id === userId);
         for (const invite of userInvites.values()) {
             await invite.delete().catch(() => {});
         }
-        // Update invite cache to reflect 0 uses
         const newInvites = await guild.invites.fetch();
         inviteCache.set(guild.id, new Map(newInvites.map(inv => [inv.code, { uses: inv.uses, inviter: inv.inviter?.id }])));
-        console.log(`Reset invites for user ${userId}`);
     } catch (e) {
         console.log('Error resetting invites:', e.message);
     }
@@ -249,17 +303,15 @@ client.on(Events.ChannelCreate, async (channel) => {
         await channel.send(
             `${member} You have **${total} invite(s)** right now. Here are your options:\n\n` +
             `1) Mcfa *(1 invite)*\n` +
-            `2) Minecraft Redeem Code *(1 invite)*\n` +
-            `3) Roblox 50$ Giftcard *(1 invite)*\n` +
-            `4) Roblox 100$ Giftcard *(1 invite)*\n` +
-            `5) Nitro Basic Yearly *(1 invite)*\n` +
-            `6) Nitro Boost Yearly *(1 invite)*\n\n` +
+            `2) Email Change Method *(2 invites)*\n` +
+            `3) Pass Change Method *(4 invites)*\n` +
+            `4) Minecraft Redeem Code Method *(6 invites)*\n\n` +
             `Left: People who joined from your invite but left the server\n` +
             `Fake: Any account considered an ALT or new account\n` +
             `Rejoin: Members who left and rejoined with your link\n\n` +
-            `**Reply with the number (1-6) or just type the reward name.**`
+            `**Reply with the number (1-4).**`
         );
-        waitingForOption.set(channel.id, member.id);
+        waitingForOption.set(channel.id, { memberId: member.id, total });
     } catch (e) {
         console.log('Error in ChannelCreate:', e.message);
     }
@@ -268,7 +320,6 @@ client.on(Events.ChannelCreate, async (channel) => {
 client.on(Events.InteractionCreate, async (interaction) => {
     try {
         if (!interaction.isChatInputCommand()) return;
-
         if (interaction.commandName === 'delall') {
             await interaction.reply({ content: '🗑️ Deleting all ticket channels...', ephemeral: true });
             const channels = interaction.guild.channels.cache.filter(c => c.name.startsWith('ticket-'));
@@ -280,11 +331,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
             await interaction.editReply({ content: `✅ Deleted **${count}** ticket channels!` });
             return;
         }
-
         if (interaction.commandName === 'rmi') {
             const target = interaction.options.getUser('user') || interaction.user;
             await resetUserInvites(interaction.guild, target.id);
-            await interaction.reply({ content: `✅ Invites fully reset for **${target.username}**! They are now at 0.`, ephemeral: true });
+            await interaction.reply({ content: `✅ Invites fully reset for **${target.username}**!`, ephemeral: true });
             return;
         }
     } catch (e) {
@@ -296,15 +346,20 @@ client.on(Events.MessageCreate, async (message) => {
     try {
         if (message.author.bot) return;
         if (waitingForOption.has(message.channel.id)) {
+            const { memberId, total } = waitingForOption.get(message.channel.id);
             const choice = message.content.trim();
             const reward = rewards[choice];
             if (!reward) {
-                await message.channel.send(`⚠️ Please reply with a number between **1-6** or this ticket will close in **15 seconds**!`);
+                await message.channel.send(`⚠️ Please reply with a number between **1-4** or this ticket will close in **15 seconds**!`);
                 await new Promise(r => setTimeout(r, 15000));
                 if (waitingForOption.has(message.channel.id)) {
                     waitingForOption.delete(message.channel.id);
                     await message.channel.delete().catch(() => {});
                 }
+                return;
+            }
+            if (total < reward.invitesNeeded) {
+                await message.channel.send(`❌ Sorry, you don't have sufficient invites for **${reward.name}**! You need **${reward.invitesNeeded} invites** but you only have **${total}**. Please pick another option or invite more people!`);
                 return;
             }
             waitingForOption.delete(message.channel.id);
@@ -316,10 +371,7 @@ client.on(Events.MessageCreate, async (message) => {
             if (message.content.trim().toLowerCase() === '!rmi') {
                 const reward = waitingForRmi.get(message.channel.id);
                 waitingForRmi.delete(message.channel.id);
-
-                // Reset invites immediately
                 await resetUserInvites(message.guild, message.author.id);
-
                 if (reward.type === 'minecraft') {
                     if (minecraftAccounts.length === 0) {
                         await message.channel.send('❌ No accounts available right now. Please contact staff!');
@@ -333,10 +385,24 @@ client.on(Events.MessageCreate, async (message) => {
                         `<@${WEAMP_ID}> <@&${STAFF_ROLE_ID}> Are we **LEGIT?**\n` +
                         `Please screenshot and post in proofs. Thanks!`
                     );
-                } else {
+                } else if (reward.type === 'emailchange') {
                     await message.channel.send(
                         `**${reward.name}**\n\n` +
-                        `Redeem here: https://index-html-six-gold.vercel.app\n\n` +
+                        EMAIL_CHANGE_METHOD + `\n\n` +
+                        `<@${WEAMP_ID}> <@&${STAFF_ROLE_ID}> Are we **LEGIT?**\n` +
+                        `Please screenshot and post in proofs. Thanks!`
+                    );
+                } else if (reward.type === 'passchange') {
+                    await message.channel.send(
+                        `**${reward.name}**\n\n` +
+                        PASS_CHANGE_METHOD + `\n\n` +
+                        `<@${WEAMP_ID}> <@&${STAFF_ROLE_ID}> Are we **LEGIT?**\n` +
+                        `Please screenshot and post in proofs. Thanks!`
+                    );
+                } else if (reward.type === 'mcfamethod') {
+                    await message.channel.send(
+                        `**${reward.name}**\n\n` +
+                        MCFA_METHOD + `\n\n` +
                         `<@${WEAMP_ID}> <@&${STAFF_ROLE_ID}> Are we **LEGIT?**\n` +
                         `Please screenshot and post in proofs. Thanks!`
                     );
