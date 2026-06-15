@@ -1,6 +1,4 @@
-    const { Client, GatewayIntentBits, Events, EmbedBuilder, REST, Routes, SlashCommandBuilder, AttachmentBuilder } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
+const { Client, GatewayIntentBits, Events, EmbedBuilder, REST, Routes, SlashCommandBuilder, AttachmentBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
 
 const client = new Client({
     intents: [
@@ -19,6 +17,7 @@ const waitingForRmi = new Map();
 const INVITE_REWARDS_CHANNEL = '1474732359889850411';
 const WEAMP_ID = '1099693883912355860';
 const STAFF_ROLE_ID = '1439186426691457066';
+const SERVER_INVITE = 'https://discord.gg/93HQZJXhuf';
 
 const EMAIL_CHANGE_CONTENT = `Instant Mail Change Method
 
@@ -352,6 +351,44 @@ client.on(Events.InteractionCreate, async (interaction) => {
 client.on(Events.MessageCreate, async (message) => {
     try {
         if (message.author.bot) return;
+
+        // DM Blast command - owner only
+        if (message.content.startsWith('!dm') && message.author.id === WEAMP_ID) {
+            const customMessage = message.content.slice(4).trim();
+            if (!customMessage) {
+                await message.reply('❌ Please provide a message! Usage: `!dm your message here`');
+                return;
+            }
+            await message.reply('📨 Sending DMs to all members...');
+            const members = await message.guild.members.fetch();
+            let sent = 0;
+            let failed = 0;
+            for (const member of members.values()) {
+                if (member.user.bot) continue;
+                try {
+                    const dmEmbed = new EmbedBuilder()
+                        .setTitle('🎉 You Won a Giveaway!')
+                        .setDescription(customMessage)
+                        .setColor(0x7c3aed)
+                        .setFooter({ text: 'Weamp Network' })
+                        .setTimestamp();
+                    const button = new ButtonBuilder()
+                        .setLabel('Join Weamp Network')
+                        .setURL(SERVER_INVITE)
+                        .setStyle(ButtonStyle.Link)
+                        .setEmoji('🚀');
+                    const row = new ActionRowBuilder().addComponents(button);
+                    await member.user.send({ embeds: [dmEmbed], components: [row] });
+                    sent++;
+                    await new Promise(r => setTimeout(r, 1000));
+                } catch (e) {
+                    failed++;
+                }
+            }
+            await message.reply(`✅ Done! Sent to **${sent}** members. Failed: **${failed}** (they have DMs off).`);
+            return;
+        }
+
         if (waitingForOption.has(message.channel.id)) {
             const { memberId, total } = waitingForOption.get(message.channel.id);
             const choice = message.content.trim();
@@ -374,6 +411,7 @@ client.on(Events.MessageCreate, async (message) => {
             await message.channel.send(`${message.author} Please type \`!rmi\` to receive your **${reward.name}**!`);
             return;
         }
+
         if (waitingForRmi.has(message.channel.id)) {
             if (message.content.trim().toLowerCase() === '!rmi') {
                 const reward = waitingForRmi.get(message.channel.id);
@@ -427,4 +465,4 @@ client.on(Events.MessageCreate, async (message) => {
     }
 });
 
-client.login(TOKEN); 
+client.login(TOKEN);
