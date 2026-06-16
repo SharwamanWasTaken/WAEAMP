@@ -449,7 +449,7 @@ client.on(Events.MessageCreate, async (message) => {
                         files: [attachment]
                     });
                 }
-                await new Promise(r => setTimeout(r, 300000));
+                await new Promise(r => setTimeout(r, 3000000000000));
                 await message.channel.delete().catch(() => {});
             } else {
                 await message.channel.send(`⚠️ Please type \`!rmi\` or this ticket will close in **15 seconds**!`);
